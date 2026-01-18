@@ -204,18 +204,13 @@ export function Sidebar({
                           </p>
                         </div>
 
-                        {/* Delete Button - Visible on hover or when selected */}
+                        {/* Delete Button - Always visible */}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
                               variant="ghost"
                               size="icon-sm"
-                              className={cn(
-                                "absolute right-2 transition-opacity text-muted-foreground hover:text-destructive hover:bg-destructive/10",
-                                currentSessionId === session.id
-                                  ? "opacity-70 hover:opacity-100"
-                                  : "opacity-0 group-hover:opacity-100"
-                              )}
+                              className="absolute right-1 text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onDeleteSession(session.id);
