@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # SeekDB - AI-native search database
+  seekdb:
+    image: oceanbase/seekdb:1.0.1.0-100000392025122619
+    container_name: membox-seekdb
+    ports:
+      - "2881:2881"
+    volumes:
+      - seekdb_data:/var/lib/oceanbase
+    healthcheck:
+      test: ["CMD", "mysql", "-h", "127.0.0.1", "-P", "2881", "-u", "root", "-e", "SELECT 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  # MemBox Backend - FastAPI + PowerMem
+  backend:
+    build: ./backend
+    container_name: membox-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      seekdb:
+        condition: service_healthy
+    environment:
+      - OCEANBASE_HOST=seekdb
+    volumes:
+      - ./backend/uploads:/app/uploads
+
+  # MemBox Frontend - Next.js 16
+  frontend:
+    build: ./frontend
+    container_name: membox-frontend
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    depends_on:
+      - backend
+    environment:
+      - BACKEND_URL=http://backend:8000
+
+volumes:
+  seekdb_data:

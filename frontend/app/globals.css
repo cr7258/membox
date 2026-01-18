@@ -1,0 +1,229 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   MemBox Design System
+   Style: Glassmorphism
+   Typography: Plus Jakarta Sans
+   Colors: AI Purple + Cyan
+   ============================================ */
+
+@layer base {
+  :root {
+    /* Primary Colors - AI Purple */
+    --primary: 263 83% 58%; /* #7C3AED */
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary - Light Purple */
+    --secondary: 263 90% 92%; /* #EDE9FE */
+    --secondary-foreground: 243 47% 20%;
+
+    /* Background - Soft Purple White */
+    --background: 270 100% 99%; /* #FAF5FF */
+    --foreground: 243 47% 20%; /* #1E1B4B */
+
+    /* Card - Glassmorphism */
+    --card: 0 0% 100%;
+    --card-foreground: 243 47% 20%;
+
+    /* Popover */
+    --popover: 0 0% 100%;
+    --popover-foreground: 243 47% 20%;
+
+    /* Muted */
+    --muted: 263 90% 96%;
+    --muted-foreground: 243 30% 50%;
+
+    /* Accent - Cyan */
+    --accent: 189 94% 43%; /* #06B6D4 */
+    --accent-foreground: 0 0% 100%;
+
+    /* Destructive */
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Border - Light Purple */
+    --border: 251 91% 92%; /* #DDD6FE */
+    --input: 251 91% 92%;
+    --ring: 263 83% 58%;
+
+    /* Radius */
+    --radius: 0.75rem;
+
+    /* Chart Colors */
+    --chart-1: 263 83% 58%;
+    --chart-2: 189 94% 43%;
+    --chart-3: 263 90% 76%;
+    --chart-4: 199 89% 48%;
+    --chart-5: 280 65% 60%;
+  }
+
+  .dark {
+    /* Primary - Brighter purple for dark mode */
+    --primary: 263 90% 70%; /* Lighter purple */
+    --primary-foreground: 243 47% 10%;
+
+    --secondary: 263 30% 18%;
+    --secondary-foreground: 263 90% 92%;
+
+    --background: 243 47% 6%; /* Deep purple-black */
+    --foreground: 263 90% 95%;
+
+    --card: 243 40% 10%;
+    --card-foreground: 263 90% 95%;
+
+    --popover: 243 40% 10%;
+    --popover-foreground: 263 90% 95%;
+
+    --muted: 243 30% 15%;
+    --muted-foreground: 263 30% 65%;
+
+    /* Accent - Cyan stays bright */
+    --accent: 189 94% 50%;
+    --accent-foreground: 243 47% 10%;
+
+    --destructive: 0 62.8% 40%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 243 30% 20%;
+    --input: 243 30% 20%;
+    --ring: 263 90% 70%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Smooth focus transitions */
+  *:focus-visible {
+    @apply outline-none transition-shadow duration-200;
+  }
+}
+
+@layer utilities {
+  /* Glassmorphism utilities */
+  .glass {
+    @apply bg-white/80 backdrop-blur-md border border-purple-200/30 shadow-lg;
+  }
+
+  .glass-dark {
+    @apply bg-purple-950/40 backdrop-blur-md border border-purple-500/10 shadow-lg;
+  }
+
+  /* Text gradient - Purple to Cyan */
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent;
+  }
+
+  /* Animated gradient background */
+  .gradient-bg {
+    background: linear-gradient(135deg, #faf5ff 0%, #ede9fe 50%, #f5f3ff 100%);
+  }
+
+  .dark .gradient-bg {
+    background: linear-gradient(135deg, #0f0d1a 0%, #1e1b4b 50%, #0f0d1a 100%);
+  }
+
+  /* Memory card styles */
+  .memory-card {
+    @apply rounded-xl bg-white/60 backdrop-blur-sm border border-purple-200/50 p-4 shadow-sm hover:shadow-md transition-all duration-200;
+  }
+
+  .dark .memory-card {
+    @apply bg-purple-950/30 border-purple-500/20;
+  }
+
+  /* Floating effect */
+  .float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  /* Glow effect - Purple */
+  .glow {
+    box-shadow: 0 0 20px rgba(124, 58, 237, 0.3), 0 0 40px rgba(124, 58, 237, 0.1);
+  }
+
+  /* Glow effect - Cyan accent */
+  .glow-accent {
+    box-shadow: 0 0 20px rgba(6, 182, 212, 0.3), 0 0 40px rgba(6, 182, 212, 0.1);
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Prose styling for markdown */
+.prose {
+  --tw-prose-body: hsl(var(--foreground));
+  --tw-prose-headings: hsl(var(--foreground));
+  --tw-prose-links: hsl(var(--primary));
+  --tw-prose-code: hsl(var(--foreground));
+}
+
+.prose code {
+  @apply bg-muted px-1.5 py-0.5 rounded text-sm font-mono;
+}
+
+.prose code::before,
+.prose code::after {
+  content: none;
+}
+
+.prose pre {
+  @apply bg-muted/50 rounded-lg p-4 overflow-x-auto;
+}
+
+.prose pre code {
+  @apply bg-transparent p-0;
+}
