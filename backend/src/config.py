@@ -85,17 +85,26 @@ config = {
 }
 
 # Prompt for LLM to classify memory type
-MEMORY_CLASSIFICATION_PROMPT = """You are a memory classification assistant. Analyze the following conversation and determine what type of memory it represents.
+MEMORY_CLASSIFICATION_PROMPT = """Classify the following conversation into ONE memory type.
 
-Memory Types:
-- semantic: Facts, knowledge, and concepts (e.g., "My name is John", "I work at Google", "Python is a programming language")
-- episodic: Personal experiences and events (e.g., "I visited Paris last summer", "Yesterday I had coffee with Tom")
-- procedural: User preferences and rules for the AI (e.g., "I prefer short responses", "Always reply in English", "Don't use emojis")
-- working: Temporary tasks and reminders (e.g., "Meeting at 3pm tomorrow", "Remind me to buy milk", "I need to call mom")
+MEMORY TYPES:
+- semantic: Static facts about the user (name, job, skills, preferences, relationships)
+  Examples: "My name is John", "I work at Google", "I like coffee", "I speak Chinese"
+  
+- episodic: Time-bound experiences, events, trips, meetings, activities
+  Examples: "I traveled to Japan last summer", "Yesterday I met Tom", "I graduated in 2020", "Last week I finished a project"
+  
+- procedural: Instructions or rules for how the AI should behave
+  Examples: "Please respond in English", "Keep answers short", "Don't use emojis"
+  
+- working: Current tasks, reminders, temporary items with deadlines
+  Examples: "Meeting at 3pm tomorrow", "Remind me to call mom", "Need to submit report by Friday"
+
+IMPORTANT: If the conversation mentions a specific TIME (yesterday, last summer, in 2020, last week, etc.), it's usually EPISODIC, not semantic.
 
 Conversation:
 {conversation}
 
-Respond with ONLY the memory type (one of: semantic, episodic, procedural, working). If the conversation doesn't contain memorable information, respond with "none".
+Respond with ONLY ONE word: semantic, episodic, procedural, working, or none.
 
 Memory type:"""

@@ -75,7 +75,7 @@ Please provide personalized, memory-aware answers based on the above information
     abortSignal: req.signal,
   });
 
-  // 4. Save conversation to memory in background
+  // 4. Save conversation to memory in background (let backend auto-classify)
   const backendUrl = process.env.BACKEND_URL ?? 'http://localhost:8000';
   fetch(`${backendUrl}/api/memory/add-conversation`, {
     method: 'POST',
@@ -86,7 +86,7 @@ Please provide personalized, memory-aware answers based on the above information
         content: m.parts?.find((p) => p.type === 'text')?.text ?? '',
       })),
       user_id: 'default_user',
-      memory_type: 'semantic',
+      // memory_type is omitted to enable auto-classification by LLM
     }),
   }).catch(console.error);
 

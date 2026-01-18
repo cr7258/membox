@@ -36,21 +36,35 @@ class MemoryManager:
         self.llm_model = os.getenv("LLM_MODEL", "qwen-plus")
     
     def _init_sub_stores(self):
-        """Activate Sub Stores (migrate data based on routing filters)"""
+        """
+        Activate Sub Stores (REQUIRED for routing to work)
+        
+        According to PowerMem docs: Sub stores must be explicitly activated by calling 
+        migrate_to_sub_store() at least once, even if there's no data to migrate.
+        Without activation, all data goes to main store only.
+        """
         try:
-            # Access the internal Memory instance to call migrate_to_sub_store
+            # Access the internal Memory instance to call migrate_all_sub_stores
             internal_memory = self.memory.memory
             
-            # Migrate working memories to sub store 0
-            internal_memory.migrate_to_sub_store(sub_store_index=0, delete_source=False)
-            # Migrate episodic memories to sub store 1
-            internal_memory.migrate_to_sub_store(sub_store_index=1, delete_source=False)
-            # Migrate procedural memories to sub store 2
-            internal_memory.migrate_to_sub_store(sub_store_index=2, delete_source=False)
-            print("✓ Sub Stores activated (working, episodic, procedural)")
+            # Check if sub_stores_config exists
+            if not internal_memory.sub_stores_config:
+                print("⚠ No sub stores configured in Memory instance")
+                return
+            
+            print(f"  Activating {len(internal_memory.sub_stores_config)} sub stores...")
+            
+            # Migrate all sub stores at once (REQUIRED for activation)
+            results = internal_memory.migrate_all_sub_stores(delete_source=True)
+            
+            for store_name, count in results.items():
+                print(f"  ✓ {store_name} activated, migrated {count} records")
+            
+            print("✓ All Sub Stores activated - new memories will route automatically based on memory_type")
         except Exception as e:
-            # This is expected on first run or if sub stores are already active
-            print(f"⚠ Sub Stores note: {e}")
+            import traceback
+            print(f"⚠ Sub Stores activation failed: {e}")
+            traceback.print_exc()
     
     def classify_memory_type(self, conversation: str) -> str:
         """
@@ -73,16 +87,19 @@ class MemoryManager:
             )
             
             result = response.choices[0].message.content.strip().lower()
+            print(f"🤖 LLM classification raw result: '{result}'")
             
             # Validate result
             if result in MEMORY_TYPES or result == "none":
+                print(f"   → Valid type: {result}")
                 return result
             
             # Default to semantic if invalid response
+            print(f"   → Invalid response, defaulting to: semantic")
             return "semantic"
             
         except Exception as e:
-            print(f"Memory classification failed: {e}")
+            print(f"❌ Memory classification failed: {e}")
             return "semantic"  # Default to semantic on error
     
     def add_memory(
@@ -165,10 +182,15 @@ class MemoryManager:
         # Auto classify if enabled and memory_type not specified
         if auto_classify and memory_type is None:
             memory_type = self.classify_memory_type(conversation_text)
+            print(f"🔍 Auto classified memory_type: {memory_type}")
             if memory_type == "none":
+                print("  → Skipping: No memorable content detected")
                 return {"skipped": True, "reason": "No memorable content detected"}
         elif memory_type is None:
             memory_type = "semantic"  # Default if auto_classify is False
+        
+        print(f"📝 Adding memory with type: {memory_type}")
+        print(f"   Metadata: {{'memory_type': '{memory_type}'}}")
         
         result = self.memory.add(
             messages=messages,
@@ -176,6 +198,8 @@ class MemoryManager:
             metadata={"memory_type": memory_type},
             infer=True
         )
+        
+        print(f"   Result: {result}")
         
         # Add classified type to result
         result["classified_type"] = memory_type
