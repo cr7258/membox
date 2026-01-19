@@ -61,6 +61,12 @@ async def add_memory(request: AddMemoryRequest):
 async def add_conversation(request: AddConversationRequest):
     """Extract memory from conversation with auto classification"""
     try:
+        print(f"\n💾 [AddConv] ========== Add Conversation ==========")
+        print(f"💾 [AddConv] user_id: {request.user_id}")
+        print(f"💾 [AddConv] memory_type: {request.memory_type}")
+        print(f"💾 [AddConv] auto_classify: {request.auto_classify}")
+        print(f"💾 [AddConv] messages: {request.messages}")
+        
         mm = get_memory_manager()
         result = mm.add_conversation(
             messages=request.messages,
@@ -68,8 +74,11 @@ async def add_conversation(request: AddConversationRequest):
             memory_type=request.memory_type,
             auto_classify=request.auto_classify
         )
+        print(f"💾 [AddConv] Result: {result}")
+        print(f"💾 [AddConv] =====================================\n")
         return {"success": True, "result": result}
     except Exception as e:
+        print(f"❌ [AddConv] Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -77,6 +86,12 @@ async def add_conversation(request: AddConversationRequest):
 async def search_memory(request: SearchMemoryRequest):
     """Search memory"""
     try:
+        print(f"\n🔍 [Search] ========== Memory Search ==========")
+        print(f"🔍 [Search] user_id: {request.user_id}")
+        print(f"🔍 [Search] query: {request.query}")
+        print(f"🔍 [Search] memory_type: {request.memory_type}")
+        print(f"🔍 [Search] limit: {request.limit}")
+        
         mm = get_memory_manager()
         
         if request.use_retention:
@@ -87,6 +102,9 @@ async def search_memory(request: SearchMemoryRequest):
                 memory_type=request.memory_type,
                 limit=request.limit
             )
+            print(f"🔍 [Search] Results (with retention): {len(results)} found")
+            for i, r in enumerate(results):
+                print(f"   [{i+1}] {r}")
             return {"results": results}
         else:
             # Normal search
@@ -96,8 +114,12 @@ async def search_memory(request: SearchMemoryRequest):
                 memory_type=request.memory_type,
                 limit=request.limit
             )
+            print(f"🔍 [Search] Results: {results.get('results', [])}")
+            print(f"🔍 [Search] Profile: {results.get('profile_content', 'None')}")
+            print(f"🔍 [Search] =====================================\n")
             return results
     except Exception as e:
+        print(f"❌ [Search] Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -18,6 +18,21 @@ const qwen = createOpenAICompatible({
 export async function POST(req: Request) {
   const { messages }: { messages: UIMessage[] } = await req.json();
 
+  // Debug: log messages received
+  console.log("\n📨 [API] ========== NEW REQUEST ==========");
+  console.log("📨 [API] messages.length:", messages.length);
+  console.log("📨 [API] messages summary:", messages.map(m => ({ 
+    role: m.role, 
+    text: m.parts?.find(p => p.type === 'text')?.text?.substring(0, 50) + '...'
+  })));
+
+  // Get userId from cookie or fallback to default
+  const cookies = req.headers.get('cookie') || '';
+  const userIdMatch = cookies.match(/membox_user_id=([^;]+)/);
+  const effectiveUserId = userIdMatch?.[1] ?? 'default_user';
+  
+  console.log("👤 [API] effectiveUserId:", effectiveUserId);
+
   // Get last user message
   const lastMessage = messages.at(-1);
   const lastMessageText =
@@ -32,7 +47,7 @@ export async function POST(req: Request) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         query: lastMessageText,
-        user_id: 'default_user',
+        user_id: effectiveUserId,
         limit: 5,
       }),
     });
@@ -75,20 +90,48 @@ Please provide personalized, memory-aware answers based on the above information
     abortSignal: req.signal,
   });
 
-  // 4. Save conversation to memory in background (let backend auto-classify)
+  // 4. Save PREVIOUS complete conversation to memory in background
+  // PowerMem needs both user message AND assistant response to extract memories
+  // So we save the previous round (user + assistant) when a new message comes in
   const backendUrl = process.env.BACKEND_URL ?? 'http://localhost:8000';
-  fetch(`${backendUrl}/api/memory/add-conversation`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      messages: messages.slice(-2).map((m) => ({
-        role: m.role,
-        content: m.parts?.find((p) => p.type === 'text')?.text ?? '',
-      })),
-      user_id: 'default_user',
-      // memory_type is omitted to enable auto-classification by LLM
-    }),
-  }).catch(console.error);
+  
+  // Find the last complete conversation pair (user message + assistant response)
+  // messages array: [..., user, assistant, user(current)]
+  // We want to save: [user, assistant] from the previous round
+  if (messages.length >= 3) {
+    // Get the previous user message and its assistant response
+    const prevUserIdx = messages.length - 3;
+    const prevAssistantIdx = messages.length - 2;
+    const prevUser = messages[prevUserIdx];
+    const prevAssistant = messages[prevAssistantIdx];
+    
+    if (prevUser?.role === 'user' && prevAssistant?.role === 'assistant') {
+      const conversationToSave = [
+        {
+          role: 'user',
+          content: prevUser.parts?.find((p) => p.type === 'text')?.text ?? '',
+        },
+        {
+          role: 'assistant', 
+          content: prevAssistant.parts?.find((p) => p.type === 'text')?.text ?? '',
+        },
+      ];
+      
+      console.log("💾 [API] Saving previous conversation:", conversationToSave);
+      
+      fetch(`${backendUrl}/api/memory/add-conversation`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: conversationToSave,
+          user_id: effectiveUserId,
+          // memory_type is omitted to enable auto-classification by LLM
+        }),
+      }).catch(console.error);
+    }
+  } else {
+    console.log(`💾 [API] Skipping save - messages.length=${messages.length}, need >= 3`);
+  }
 
   return result.toUIMessageStreamResponse({
     consumeSseStream: consumeStream,

@@ -33,6 +33,7 @@ import {
 import { Suggestions, Suggestion } from "@/components/elements/suggestion";
 import { Loader } from "@/components/elements/loader";
 import { Sidebar } from "@/components/elements/sidebar";
+import { LoginModal } from "@/components/elements/user-selector";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -40,6 +41,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useChatSessions } from "@/hooks/use-chat-sessions";
+import { useUser } from "@/hooks/use-user";
 import { cn } from "@/lib/utils";
 
 const SUGGESTIONS = [
@@ -54,18 +56,31 @@ export default function Home() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
+  // User management
+  const {
+    currentUser,
+    users,
+    isLoaded: isUserLoaded,
+    login,
+    switchUser,
+    logout,
+  } = useUser();
+
+  // Chat sessions (filtered by current user)
   const {
     sessions,
     currentSession,
     currentSessionId,
-    isLoaded,
+    isLoaded: isSessionsLoaded,
     createSession,
     updateSessionMessages,
     deleteSession,
     selectSession,
     newChat,
-  } = useChatSessions();
+  } = useChatSessions(currentUser?.id ?? null);
 
+  // Chat hook - userId will be passed via sendMessage data
+  const userId = currentUser?.id ?? "default_user";
   const { messages, sendMessage, status, setMessages, stop, error } = useChat({
     id: currentSessionId || undefined,
   });
@@ -86,12 +101,12 @@ export default function Home() {
     }
   }, [currentSessionId, setMessages]);
 
-  // Create initial session if none exists
+  // Create initial session if user is logged in and no sessions exist
   useEffect(() => {
-    if (isLoaded && sessions.length === 0) {
+    if (isSessionsLoaded && currentUser && sessions.length === 0) {
       createSession();
     }
-  }, [isLoaded, sessions.length, createSession]);
+  }, [isSessionsLoaded, currentUser, sessions.length, createSession]);
 
   const handleSubmit = useCallback(
     async (message: { text: string }) => {
@@ -102,10 +117,12 @@ export default function Home() {
         createSession();
       }
 
+      // Store userId in cookie for API route to read
+      document.cookie = `membox_user_id=${userId}; path=/; max-age=86400`;
       await sendMessage({ text: message.text });
       setInput("");
     },
-    [sendMessage, currentSessionId, createSession]
+    [sendMessage, currentSessionId, createSession, userId]
   );
 
   const handleSuggestionClick = useCallback(
@@ -113,9 +130,11 @@ export default function Home() {
       if (!currentSessionId) {
         createSession();
       }
+      // Store userId in cookie for API route to read
+      document.cookie = `membox_user_id=${userId}; path=/; max-age=86400`;
       await sendMessage({ text: suggestion });
     },
-    [sendMessage, currentSessionId, createSession]
+    [sendMessage, currentSessionId, createSession, userId]
   );
 
   const handleNewChat = useCallback(() => {
@@ -143,12 +162,18 @@ export default function Home() {
     updatedAt: s.updatedAt,
   }));
 
-  if (!isLoaded) {
+  // Loading state
+  if (!isUserLoaded || !isSessionsLoaded) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <Loader size={32} className="text-primary" />
       </div>
     );
+  }
+
+  // Login modal - show if no user is logged in
+  if (!currentUser) {
+    return <LoginModal onLogin={login} />;
   }
 
   return (
@@ -163,6 +188,11 @@ export default function Home() {
           onDeleteSession={deleteSession}
           isCollapsed={sidebarCollapsed}
           onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+          currentUser={currentUser}
+          users={users}
+          onSwitchUser={switchUser}
+          onLogout={logout}
+          onLogin={login}
         />
       </div>
 
@@ -185,6 +215,11 @@ export default function Home() {
               onDeleteSession={deleteSession}
               isCollapsed={false}
               onToggleCollapse={() => setMobileSidebarOpen(false)}
+              currentUser={currentUser}
+              users={users}
+              onSwitchUser={switchUser}
+              onLogout={logout}
+              onLogin={login}
             />
           </div>
         </div>
@@ -211,6 +246,10 @@ export default function Home() {
               <span className="font-semibold text-foreground md:hidden">MemBox</span>
             </div>
 
+            {/* Right side - User indicator on mobile */}
+            <div className="md:hidden text-sm text-muted-foreground">
+              👤 {currentUser.name}
+            </div>
           </div>
         </header>
 
@@ -231,7 +270,7 @@ export default function Home() {
                         <BrainIcon className="w-10 h-10 text-white" />
                       </div>
                     }
-                    title="Welcome to MemBox"
+                    title={`Welcome, ${currentUser.name}!`}
                     description="I'm your intelligent memory assistant. I can remember information you share and recall it whenever you need. Try telling me something about yourself!"
                   >
                     <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center shadow-xl glow float mb-6">
@@ -239,7 +278,7 @@ export default function Home() {
                     </div>
                     <div className="space-y-2 mb-8">
                       <h2 className="text-2xl font-bold text-foreground">
-                        Welcome to MemBox
+                        Welcome, {currentUser.name}!
                       </h2>
                       <p className="text-muted-foreground max-w-md">
                         I&apos;m your intelligent memory assistant. I can

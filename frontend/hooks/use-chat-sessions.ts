@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import type { UIMessage } from "ai";
 import { nanoid } from "nanoid";
 
 export interface ChatSession {
   id: string;
+  userId: string; // User who owns this session
   title: string;
   preview: string;
   messages: UIMessage[];
@@ -55,10 +56,16 @@ function generatePreview(messages: UIMessage[]): string {
   return text.length > 50 ? text.slice(0, 50) + "..." : text;
 }
 
-export function useChatSessions() {
-  const [sessions, setSessions] = useState<ChatSession[]>([]);
+export function useChatSessions(userId: string | null) {
+  const [allSessions, setAllSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+
+  // Filter sessions for current user
+  const sessions = useMemo(() => {
+    if (!userId) return [];
+    return allSessions.filter((s) => s.userId === userId);
+  }, [allSessions, userId]);
 
   // Load sessions from localStorage on mount
   useEffect(() => {
@@ -66,7 +73,7 @@ export function useChatSessions() {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const loadedSessions = deserializeSessions(stored);
-        setSessions(loadedSessions);
+        setAllSessions(loadedSessions);
       }
 
       const storedCurrentId = localStorage.getItem(CURRENT_SESSION_KEY);
@@ -79,15 +86,30 @@ export function useChatSessions() {
     setIsLoaded(true);
   }, []);
 
+  // When user changes, verify current session belongs to user
+  useEffect(() => {
+    if (!isLoaded || !userId) return;
+
+    // Check if current session belongs to current user
+    if (currentSessionId) {
+      const currentSession = allSessions.find((s) => s.id === currentSessionId);
+      if (!currentSession || currentSession.userId !== userId) {
+        // Current session doesn't belong to this user, select first matching or null
+        const userSessions = allSessions.filter((s) => s.userId === userId);
+        setCurrentSessionId(userSessions[0]?.id || null);
+      }
+    }
+  }, [userId, isLoaded, allSessions, currentSessionId]);
+
   // Save sessions to localStorage whenever they change
   useEffect(() => {
     if (!isLoaded) return;
     try {
-      localStorage.setItem(STORAGE_KEY, serializeSessions(sessions));
+      localStorage.setItem(STORAGE_KEY, serializeSessions(allSessions));
     } catch (error) {
       console.error("Failed to save chat sessions:", error);
     }
-  }, [sessions, isLoaded]);
+  }, [allSessions, isLoaded]);
 
   // Save current session ID
   useEffect(() => {
@@ -103,9 +125,12 @@ export function useChatSessions() {
   const currentSession = sessions.find((s) => s.id === currentSessionId) || null;
 
   // Create a new chat session
-  const createSession = useCallback((): ChatSession => {
+  const createSession = useCallback((): ChatSession | null => {
+    if (!userId) return null;
+
     const newSession: ChatSession = {
       id: nanoid(),
+      userId,
       title: "New Chat",
       preview: "No messages",
       messages: [],
@@ -113,15 +138,15 @@ export function useChatSessions() {
       updatedAt: new Date(),
     };
 
-    setSessions((prev) => [newSession, ...prev]);
+    setAllSessions((prev) => [newSession, ...prev]);
     setCurrentSessionId(newSession.id);
     return newSession;
-  }, []);
+  }, [userId]);
 
   // Update session messages
   const updateSessionMessages = useCallback(
     (sessionId: string, messages: UIMessage[]) => {
-      setSessions((prev) =>
+      setAllSessions((prev) =>
         prev.map((session) => {
           if (session.id !== sessionId) return session;
           return {
@@ -140,9 +165,9 @@ export function useChatSessions() {
   // Delete a session
   const deleteSession = useCallback(
     (sessionId: string) => {
-      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+      setAllSessions((prev) => prev.filter((s) => s.id !== sessionId));
       if (currentSessionId === sessionId) {
-        // Select the next available session or null
+        // Select the next available session for this user or null
         const remainingSessions = sessions.filter((s) => s.id !== sessionId);
         setCurrentSessionId(remainingSessions[0]?.id || null);
       }
@@ -161,7 +186,7 @@ export function useChatSessions() {
   }, [createSession]);
 
   return {
-    sessions,
+    sessions, // Sessions for current user only
     currentSession,
     currentSessionId,
     isLoaded,

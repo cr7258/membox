@@ -6,6 +6,7 @@ import {
   ChevronRightIcon,
   TrashIcon,
   BrainIcon,
+  UserIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,7 +15,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { UserSelector } from "@/components/elements/user-selector";
 import { cn } from "@/lib/utils";
+import type { User } from "@/hooks/use-user";
 
 export interface ChatSession {
   id: string;
@@ -32,6 +35,12 @@ export interface SidebarProps {
   onDeleteSession: (sessionId: string) => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  // User props
+  currentUser?: User | null;
+  users?: User[];
+  onSwitchUser?: (userId: string) => void;
+  onLogout?: () => void;
+  onLogin?: (username: string) => void;
 }
 
 export function Sidebar({
@@ -42,6 +51,11 @@ export function Sidebar({
   onDeleteSession,
   isCollapsed = false,
   onToggleCollapse,
+  currentUser,
+  users = [],
+  onSwitchUser,
+  onLogout,
+  onLogin,
 }: SidebarProps) {
 
   // Group sessions by date
@@ -78,7 +92,7 @@ export function Sidebar({
 
   if (isCollapsed) {
     return (
-      <div className="flex flex-col items-center py-4 w-16 border-r border-border/50 bg-background/50 backdrop-blur-sm">
+      <div className="flex flex-col items-center py-4 w-16 border-r border-border/50 bg-background/50 backdrop-blur-sm h-full">
         {/* Logo */}
         <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-cyan-500 text-white shadow-lg mb-4">
           <BrainIcon className="w-5 h-5" />
@@ -99,6 +113,21 @@ export function Sidebar({
           <TooltipContent side="right">New Chat</TooltipContent>
         </Tooltip>
 
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* User Icon */}
+        {currentUser && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary mb-2">
+                <UserIcon className="w-4 h-4" />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="right">{currentUser.name}</TooltipContent>
+          </Tooltip>
+        )}
+
         {/* Expand Button */}
         <Tooltip>
           <TooltipTrigger asChild>
@@ -106,7 +135,7 @@ export function Sidebar({
               variant="ghost"
               size="icon"
               onClick={onToggleCollapse}
-              className="mt-auto text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground"
             >
               <ChevronRightIcon className="w-4 h-4" />
             </Button>
@@ -118,7 +147,7 @@ export function Sidebar({
   }
 
   return (
-    <div className="flex flex-col w-72 border-r border-border/50 bg-background/50 backdrop-blur-sm">
+    <div className="flex flex-col w-72 border-r border-border/50 bg-background/50 backdrop-blur-sm h-full">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border/50">
         <div className="flex items-center gap-3">
@@ -231,8 +260,21 @@ export function Sidebar({
         )}
       </ScrollArea>
 
+      {/* User Selector */}
+      {currentUser && onSwitchUser && onLogout && onLogin && (
+        <div className="p-3 border-t border-border/50">
+          <UserSelector
+            currentUser={currentUser}
+            users={users}
+            onLogin={onLogin}
+            onSwitchUser={onSwitchUser}
+            onLogout={onLogout}
+          />
+        </div>
+      )}
+
       {/* Footer */}
-      <div className="p-3 border-t border-border/50">
+      <div className="px-3 pb-3">
         <p className="text-xs text-center text-muted-foreground">
           Powered by <span className="text-primary font-medium">SeekDB</span> +{" "}
           <span className="text-primary font-medium">PowerMem</span>
