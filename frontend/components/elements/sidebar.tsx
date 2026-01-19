@@ -209,7 +209,7 @@ export function Sidebar({
                       <div
                         key={session.id}
                         className={cn(
-                          "group relative flex items-center gap-2 rounded-lg px-3 py-2.5 cursor-pointer transition-all duration-150",
+                          "group grid grid-cols-[auto_1fr_auto] items-center gap-2 rounded-lg px-3 py-2.5 cursor-pointer transition-all duration-150",
                           currentSessionId === session.id
                             ? "bg-primary/15 text-primary"
                             : "hover:bg-muted/50 text-foreground"
@@ -218,13 +218,13 @@ export function Sidebar({
                       >
                         <MessageSquareIcon
                           className={cn(
-                            "w-4 h-4 shrink-0",
+                            "w-4 h-4",
                             currentSessionId === session.id
                               ? "text-primary"
                               : "text-muted-foreground"
                           )}
                         />
-                        <div className="flex-1 min-w-0 pr-6">
+                        <div className="min-w-0">
                           <p className="text-sm font-medium truncate">
                             {session.title}
                           </p>
@@ -233,13 +233,13 @@ export function Sidebar({
                           </p>
                         </div>
 
-                        {/* Delete Button - Always visible */}
+                        {/* Delete Button */}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
                               variant="ghost"
-                              size="icon-sm"
-                              className="absolute right-1 text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10"
+                              size="sm"
+                              className="h-7 w-7 p-0 opacity-60 hover:opacity-100 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-opacity"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onDeleteSession(session.id);
@@ -248,7 +248,7 @@ export function Sidebar({
                               <TrashIcon className="w-3.5 h-3.5" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>Delete</TooltipContent>
+                          <TooltipContent side="right">Delete</TooltipContent>
                         </Tooltip>
                       </div>
                     ))}
