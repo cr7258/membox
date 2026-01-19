@@ -1,4 +1,4 @@
 """
 MemBox Routes Module
 """
-from . import memory, chat, upload
+from . import memory, upload

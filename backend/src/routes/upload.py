@@ -1,12 +1,15 @@
 """
 File Upload API Routes
 """
+import logging
 import os
 import uuid
 from datetime import datetime
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from typing import List
 
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # Upload directory (backend/uploads)
@@ -73,6 +76,7 @@ async def upload_images(
             uploaded_urls.append(image_url)
             uploaded_filenames.append(filename)
         
+        logger.info(f"Uploaded {len(uploaded_urls)} images for user: {user_id}")
         return {
             "success": True,
             "count": len(uploaded_urls),
@@ -83,4 +87,5 @@ async def upload_images(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Failed to upload images: {e}")
         raise HTTPException(status_code=500, detail=str(e))

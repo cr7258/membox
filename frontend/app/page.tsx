@@ -131,7 +131,6 @@ export default function Home() {
     if (lastUserMessage.id === lastProcessedUserMessageId) return;
     
     // Associate images with this message
-    console.log("📷 Associating images with message:", lastUserMessage.id, imagesToAssociate);
     setMessageImages(prev => ({
       ...prev,
       [lastUserMessage.id]: [...imagesToAssociate]
@@ -164,11 +163,9 @@ export default function Home() {
         if (response.ok) {
           const data = await response.json();
           setPendingImages((prev) => [...prev, ...data.urls]);
-        } else {
-          console.error("Upload failed:", await response.text());
         }
-      } catch (error) {
-        console.error("Upload error:", error);
+      } catch {
+        // Silently ignore upload errors
       } finally {
         setIsUploading(false);
         if (fileInputRef.current) {
@@ -201,7 +198,6 @@ export default function Home() {
       if (pendingImages.length > 0) {
         document.cookie = `membox_images=${encodeURIComponent(JSON.stringify(pendingImages))}; path=/; max-age=60`;
         setImagesToAssociate([...pendingImages]);
-        console.log("📷 Saved images for association:", pendingImages);
       } else {
         document.cookie = `membox_images=; path=/; max-age=0`;
       }
@@ -390,12 +386,8 @@ export default function Home() {
                   </ConversationEmptyState>
                 ) : (
                   <>
-                    {console.log("🖼️ Rendering with messageImages:", messageImages)}
                     {messages.map((message) => {
                       const images = messageImages[message.id];
-                      if (message.role === "user") {
-                        console.log("👤 User message:", message.id, "images:", images);
-                      }
                       return (
                       <Message key={message.id} from={message.role}>
                         {/* Show images for user messages */}

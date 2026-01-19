@@ -1,23 +1,20 @@
 """
 Memory Management API Routes
 """
+import logging
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import List, Dict, Any
+from typing import List, Dict
 
 from ..memory_manager import get_memory_manager
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
 class AddMemoryRequest(BaseModel):
     """Add memory request"""
-    content: str
-    user_id: str
-
-
-class AddConversationRequest(BaseModel):
-    """Add conversation request"""
     messages: List[Dict[str, str]]
     user_id: str
 
@@ -27,47 +24,20 @@ class SearchMemoryRequest(BaseModel):
     query: str
     user_id: str
     limit: int = 5
-    use_retention: bool = False  # Whether to consider forgetting curve
-
-
-class DeleteMemoryRequest(BaseModel):
-    """Delete memory request"""
-    memory_id: str
-    user_id: str
 
 
 @router.post("/add")
 async def add_memory(request: AddMemoryRequest):
-    """Add memory"""
+    """Add memory from conversation"""
     try:
         mm = get_memory_manager()
         result = mm.add_memory(
-            content=request.content,
-            user_id=request.user_id
-        )
-        return {"success": True, "result": result}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/add-conversation")
-async def add_conversation(request: AddConversationRequest):
-    """Extract memory from conversation"""
-    try:
-        print(f"\n💾 [AddConv] ========== Add Conversation ==========")
-        print(f"💾 [AddConv] user_id: {request.user_id}")
-        print(f"💾 [AddConv] messages: {request.messages}")
-        
-        mm = get_memory_manager()
-        result = mm.add_conversation(
             messages=request.messages,
             user_id=request.user_id
         )
-        print(f"💾 [AddConv] Result: {result}")
-        print(f"💾 [AddConv] =====================================\n")
         return {"success": True, "result": result}
     except Exception as e:
-        print(f"❌ [AddConv] Error: {e}")
+        logger.error(f"Failed to add memory: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -75,79 +45,13 @@ async def add_conversation(request: AddConversationRequest):
 async def search_memory(request: SearchMemoryRequest):
     """Search memory"""
     try:
-        print(f"\n🔍 [Search] ========== Memory Search ==========")
-        print(f"🔍 [Search] user_id: {request.user_id}")
-        print(f"🔍 [Search] query: {request.query}")
-        print(f"🔍 [Search] limit: {request.limit}")
-        
         mm = get_memory_manager()
-        
-        if request.use_retention:
-            # Weighted search considering forgetting curve
-            results = mm.search_with_retention(
-                query=request.query,
-                user_id=request.user_id,
-                limit=request.limit
-            )
-            print(f"🔍 [Search] Results (with retention): {len(results)} found")
-            for i, r in enumerate(results):
-                print(f"   [{i+1}] {r}")
-            return {"results": results}
-        else:
-            # Normal search
-            results = mm.search_memory(
-                query=request.query,
-                user_id=request.user_id,
-                limit=request.limit
-            )
-            print(f"🔍 [Search] Results: {results.get('results', [])}")
-            print(f"🔍 [Search] Profile: {results.get('profile_content', 'None')}")
-            print(f"🔍 [Search] =====================================\n")
-            return results
+        results = mm.search_memory(
+            query=request.query,
+            user_id=request.user_id,
+            limit=request.limit
+        )
+        return results
     except Exception as e:
-        print(f"❌ [Search] Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/profile/{user_id}")
-async def get_profile(user_id: str):
-    """Get user profile"""
-    try:
-        mm = get_memory_manager()
-        profile = mm.get_user_profile(user_id)
-        return profile
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/all/{user_id}")
-async def get_all_memories(user_id: str):
-    """Get all memories for user"""
-    try:
-        mm = get_memory_manager()
-        memories = mm.get_all_memories(user_id)
-        return memories
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/need-review/{user_id}")
-async def get_memories_need_review(user_id: str, threshold: float = 0.3):
-    """Get memories that need review"""
-    try:
-        mm = get_memory_manager()
-        memories = mm.get_memories_need_review(user_id, retention_threshold=threshold)
-        return {"results": memories, "count": len(memories)}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.delete("/delete")
-async def delete_memory(request: DeleteMemoryRequest):
-    """Delete memory"""
-    try:
-        mm = get_memory_manager()
-        success = mm.delete_memory(request.memory_id, request.user_id)
-        return {"success": success}
-    except Exception as e:
+        logger.error(f"Failed to search memory: {e}")
         raise HTTPException(status_code=500, detail=str(e))

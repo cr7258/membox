@@ -1,15 +1,25 @@
 """
 MemBox Backend - FastAPI Application
 """
+import logging
+import os
+from contextlib import asynccontextmanager
+
+import pymysql
+import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from contextlib import asynccontextmanager
-import os
-import pymysql
 
 from .memory_manager import get_memory_manager
-from .routes import memory, chat, upload
+from .routes import memory, upload
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 
 def init_database():
@@ -32,12 +42,12 @@ def init_database():
         
         # Create database
         cursor.execute(f"CREATE DATABASE IF NOT EXISTS `{db_name}`")
-        print(f"✓ Database '{db_name}' is ready")
+        logger.info(f"Database '{db_name}' is ready")
         
         cursor.close()
         conn.close()
     except Exception as e:
-        print(f"⚠ Database init warning: {e}")
+        logger.warning(f"Database init warning: {e}")
 
 
 @asynccontextmanager
@@ -48,11 +58,11 @@ async def lifespan(app: FastAPI):
     
     # Initialize memory manager on startup
     mm = get_memory_manager()
-    print("✓ MemBox backend started successfully")
-    print(f"  - SeekDB: {os.getenv('OCEANBASE_HOST', '127.0.0.1')}:{os.getenv('OCEANBASE_PORT', '2881')}")
-    print(f"  - LLM: {os.getenv('LLM_MODEL', 'qwen-plus')}")
+    logger.info("MemBox backend started successfully")
+    logger.info(f"SeekDB: {os.getenv('OCEANBASE_HOST', '127.0.0.1')}:{os.getenv('OCEANBASE_PORT', '2881')}")
+    logger.info(f"LLM: {os.getenv('LLM_MODEL', 'qwen-plus')}")
     yield
-    print("✓ MemBox backend shutdown")
+    logger.info("MemBox backend shutdown")
 
 
 app = FastAPI(
@@ -80,7 +90,6 @@ app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 # Register routes
 app.include_router(memory.router, prefix="/api/memory", tags=["Memory"])
-app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
 app.include_router(upload.router, prefix="/api/upload", tags=["Upload"])
 
 
@@ -102,7 +111,6 @@ async def health_check():
 
 def main():
     """Entry point for `uv run membox`"""
-    import uvicorn
     uvicorn.run(
         "src.main:app",
         host="0.0.0.0",
