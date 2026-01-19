@@ -58,6 +58,9 @@ export default function Home() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [pendingImages, setPendingImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [messageImages, setMessageImages] = useState<Record<string, string[]>>({});
+  const [imagesToAssociate, setImagesToAssociate] = useState<string[]>([]);
+  const [lastProcessedUserMessageId, setLastProcessedUserMessageId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // User management
@@ -111,6 +114,32 @@ export default function Home() {
       createSession();
     }
   }, [isSessionsLoaded, currentUser, sessions.length, createSession]);
+
+  // Associate images with the latest user message after it's sent
+  // Using state instead of ref to avoid stale closure issues
+  useEffect(() => {
+    // Only run if we have pending images to associate
+    if (imagesToAssociate.length === 0) return;
+    
+    // Find the most recent user message
+    const userMessages = messages.filter(m => m.role === 'user');
+    if (userMessages.length === 0) return;
+    
+    const lastUserMessage = userMessages[userMessages.length - 1];
+    
+    // Check if we already processed this message
+    if (lastUserMessage.id === lastProcessedUserMessageId) return;
+    
+    // Associate images with this message
+    console.log("📷 Associating images with message:", lastUserMessage.id, imagesToAssociate);
+    setMessageImages(prev => ({
+      ...prev,
+      [lastUserMessage.id]: [...imagesToAssociate]
+    }));
+    
+    setLastProcessedUserMessageId(lastUserMessage.id);
+    setImagesToAssociate([]);
+  }, [messages, imagesToAssociate, lastProcessedUserMessageId]);
 
   // Handle image upload
   const handleImageUpload = useCallback(
@@ -167,19 +196,23 @@ export default function Home() {
       // Store userId in cookie for API route to read
       document.cookie = `membox_user_id=${userId}; path=/; max-age=86400`;
       
-      // Store image URLs in cookie for API route to read (temporary solution)
+      // Store image URLs in cookie for API route to read
+      // Use state to track images for association (avoids stale closure)
       if (pendingImages.length > 0) {
         document.cookie = `membox_images=${encodeURIComponent(JSON.stringify(pendingImages))}; path=/; max-age=60`;
+        setImagesToAssociate([...pendingImages]);
+        console.log("📷 Saved images for association:", pendingImages);
       } else {
         document.cookie = `membox_images=; path=/; max-age=0`;
       }
 
+      // Clear UI state before sending
+      setInput("");
+      setPendingImages([]);
+
       await sendMessage({
         text: message.text || "Please describe these images",
       });
-      
-      setInput("");
-      setPendingImages([]);
     },
     [sendMessage, currentSessionId, createSession, userId, pendingImages]
   );
@@ -357,8 +390,27 @@ export default function Home() {
                   </ConversationEmptyState>
                 ) : (
                   <>
-                    {messages.map((message) => (
+                    {console.log("🖼️ Rendering with messageImages:", messageImages)}
+                    {messages.map((message) => {
+                      const images = messageImages[message.id];
+                      if (message.role === "user") {
+                        console.log("👤 User message:", message.id, "images:", images);
+                      }
+                      return (
                       <Message key={message.id} from={message.role}>
+                        {/* Show images for user messages */}
+                        {message.role === "user" && images && images.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mb-2">
+                            {images.map((url, idx) => (
+                              <img
+                                key={idx}
+                                src={url}
+                                alt={`Image ${idx + 1}`}
+                                className="max-w-[200px] max-h-[200px] object-cover rounded-lg border border-border"
+                              />
+                            ))}
+                          </div>
+                        )}
                         {message.parts
                           ?.filter((part) => part.type === "text")
                           ?.map((part, index) => (
@@ -375,7 +427,8 @@ export default function Home() {
                             </MessageContent>
                           ))}
                       </Message>
-                    ))}
+                    );
+                    })}
 
                     {status === "submitted" && (
                       <Message from="assistant">
