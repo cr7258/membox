@@ -3,7 +3,7 @@ Memory Management API Routes
 """
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
+from typing import List, Dict, Any
 
 from ..memory_manager import get_memory_manager
 
@@ -14,7 +14,6 @@ class AddMemoryRequest(BaseModel):
     """Add memory request"""
     content: str
     user_id: str
-    image_url: Optional[str] = None
 
 
 class AddConversationRequest(BaseModel):
@@ -44,8 +43,7 @@ async def add_memory(request: AddMemoryRequest):
         mm = get_memory_manager()
         result = mm.add_memory(
             content=request.content,
-            user_id=request.user_id,
-            image_url=request.image_url
+            user_id=request.user_id
         )
         return {"success": True, "result": result}
     except Exception as e:

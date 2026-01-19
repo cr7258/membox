@@ -8,6 +8,9 @@ export const metadata: Metadata = {
     "A multimodal intelligent memory system built with SeekDB and PowerMem",
   keywords: ["AI", "Memory", "SeekDB", "PowerMem", "OceanBase"],
   authors: [{ name: "MemBox Team" }],
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export const viewport: Viewport = {

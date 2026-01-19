@@ -49,7 +49,7 @@ function generatePreview(messages: UIMessage[]): string {
   if (messages.length === 0) return "No messages";
 
   const lastMessage = messages[messages.length - 1];
-  const textPart = lastMessage.parts.find((p) => p.type === "text");
+  const textPart = lastMessage.parts?.find((p) => p.type === "text");
   if (!textPart || textPart.type !== "text") return "No messages";
 
   const text = textPart.text;

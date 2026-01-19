@@ -18,35 +18,20 @@ class MemoryManager:
     def add_memory(
         self, 
         content: str, 
-        user_id: str, 
-        image_url: Optional[str] = None
+        user_id: str
     ) -> Dict[str, Any]:
         """
-        Add memory
+        Add memory (text only)
         
         Args:
             content: Memory content
             user_id: User ID
-            image_url: Image URL (optional)
         
         Returns:
             Add result
         """
-        if image_url:
-            # Image memory - use OpenAI multimodal format
-            messages = [{
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": content},
-                    {"type": "image_url", "image_url": {"url": image_url, "detail": "auto"}}
-                ]
-            }]
-        else:
-            # Text-only memory
-            messages = content
-        
         result = self.memory.add(
-            messages=messages,
+            messages=content,
             user_id=user_id,
             infer=True  # Intelligent extraction
         )
@@ -54,14 +39,16 @@ class MemoryManager:
     
     def add_conversation(
         self,
-        messages: List[Dict[str, str]],
+        messages: List[Dict[str, Any]],
         user_id: str
     ) -> Dict[str, Any]:
         """
-        Extract memory from conversation
+        Extract memory from conversation (supports multimodal messages)
         
         Args:
-            messages: Conversation message list [{"role": "user/assistant", "content": "..."}]
+            messages: Conversation message list 
+                      Text: [{"role": "user", "content": "..."}]
+                      Multimodal: [{"role": "user", "content": [{"type": "text"}, {"type": "image_url"}]}]
             user_id: User ID
         
         Returns:

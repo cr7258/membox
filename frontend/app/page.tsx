@@ -1,13 +1,14 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   BrainIcon,
   ImageIcon,
-  SparklesIcon,
   RefreshCwIcon,
   MenuIcon,
+  XIcon,
+  Loader2Icon,
 } from "lucide-react";
 
 import {
@@ -55,6 +56,9 @@ export default function Home() {
   const [input, setInput] = useState("");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [pendingImages, setPendingImages] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // User management
   const {
@@ -108,9 +112,52 @@ export default function Home() {
     }
   }, [isSessionsLoaded, currentUser, sessions.length, createSession]);
 
+  // Handle image upload
+  const handleImageUpload = useCallback(
+    async (files: FileList | null) => {
+      if (!files || files.length === 0) return;
+
+      setIsUploading(true);
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
+
+      try {
+        const formData = new FormData();
+        Array.from(files).forEach((file) => {
+          formData.append("files", file);
+        });
+        formData.append("user_id", userId);
+
+        const response = await fetch(`${backendUrl}/api/upload/images`, {
+          method: "POST",
+          body: formData,
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setPendingImages((prev) => [...prev, ...data.urls]);
+        } else {
+          console.error("Upload failed:", await response.text());
+        }
+      } catch (error) {
+        console.error("Upload error:", error);
+      } finally {
+        setIsUploading(false);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+      }
+    },
+    [userId]
+  );
+
+  // Remove pending image
+  const removePendingImage = useCallback((index: number) => {
+    setPendingImages((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
   const handleSubmit = useCallback(
     async (message: { text: string }) => {
-      if (!message.text.trim()) return;
+      if (!message.text.trim() && pendingImages.length === 0) return;
 
       // Create a session if none exists
       if (!currentSessionId) {
@@ -119,10 +166,22 @@ export default function Home() {
 
       // Store userId in cookie for API route to read
       document.cookie = `membox_user_id=${userId}; path=/; max-age=86400`;
-      await sendMessage({ text: message.text });
+      
+      // Store image URLs in cookie for API route to read (temporary solution)
+      if (pendingImages.length > 0) {
+        document.cookie = `membox_images=${encodeURIComponent(JSON.stringify(pendingImages))}; path=/; max-age=60`;
+      } else {
+        document.cookie = `membox_images=; path=/; max-age=0`;
+      }
+
+      await sendMessage({
+        text: message.text || "Please describe these images",
+      });
+      
       setInput("");
+      setPendingImages([]);
     },
-    [sendMessage, currentSessionId, createSession, userId]
+    [sendMessage, currentSessionId, createSession, userId, pendingImages]
   );
 
   const handleSuggestionClick = useCallback(
@@ -301,8 +360,8 @@ export default function Home() {
                     {messages.map((message) => (
                       <Message key={message.id} from={message.role}>
                         {message.parts
-                          .filter((part) => part.type === "text")
-                          .map((part, index) => (
+                          ?.filter((part) => part.type === "text")
+                          ?.map((part, index) => (
                             <MessageContent
                               key={`${message.id}-${part.type}-${index}`}
                             >
@@ -363,16 +422,52 @@ export default function Home() {
               sidebarCollapsed ? "max-w-5xl" : "max-w-4xl"
             )}
           >
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => handleImageUpload(e.target.files)}
+            />
+
             <PromptInput
               onSubmit={handleSubmit}
               value={input}
               onInputChange={setInput}
             >
               <PromptInputBody>
+                {/* Image previews */}
+                {pendingImages.length > 0 && (
+                  <div className="flex flex-wrap gap-2 p-3 border-b border-border/50">
+                    {pendingImages.map((url, index) => (
+                      <div key={url} className="relative group">
+                        <img
+                          src={url}
+                          alt={`Upload ${index + 1}`}
+                          className="w-16 h-16 object-cover rounded-lg border border-border"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removePendingImage(index)}
+                          className="absolute -top-2 -right-2 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <XIcon className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                    {isUploading && (
+                      <div className="w-16 h-16 rounded-lg border border-border flex items-center justify-center bg-muted">
+                        <Loader2Icon className="w-5 h-5 animate-spin text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                )}
                 <PromptInputTextarea
                   value={input}
                   onValueChange={setInput}
-                  placeholder="Tell me something to remember..."
+                  placeholder={pendingImages.length > 0 ? "Ask about these images..." : "Tell me something to remember..."}
                   disabled={isGenerating}
                 />
               </PromptInputBody>
@@ -382,32 +477,31 @@ export default function Home() {
                     <TooltipTrigger asChild>
                       <PromptInputButton
                         type="button"
-                        className="text-muted-foreground hover:text-foreground"
+                        className={cn(
+                          "text-muted-foreground hover:text-foreground",
+                          pendingImages.length > 0 && "text-primary"
+                        )}
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploading}
                       >
-                        <ImageIcon className="w-4 h-4" />
+                        {isUploading ? (
+                          <Loader2Icon className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <ImageIcon className="w-4 h-4" />
+                        )}
                       </PromptInputButton>
                     </TooltipTrigger>
-                    <TooltipContent>Upload image</TooltipContent>
                   </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <PromptInputButton
-                        type="button"
-                        className="text-muted-foreground hover:text-foreground"
-                      >
-                        <SparklesIcon className="w-4 h-4" />
-                      </PromptInputButton>
-                    </TooltipTrigger>
-                    <TooltipContent>Memory features</TooltipContent>
-                  </Tooltip>
-                  <span className="text-xs text-muted-foreground ml-2">
-                    {input.length} / 2000
-                  </span>
+                  {pendingImages.length > 0 && (
+                    <span className="text-xs text-muted-foreground ml-2">
+                      {pendingImages.length} images
+                    </span>
+                  )}
                 </PromptInputTools>
                 <PromptInputSubmit
                   status={status}
                   onStop={stop}
-                  disabled={!input.trim() && !isGenerating}
+                  disabled={(!input.trim() && pendingImages.length === 0) && !isGenerating}
                 />
               </PromptInputFooter>
             </PromptInput>
