@@ -109,20 +109,16 @@ Please provide personalized, memory-aware answers based on the above information
                 
                 yield "data: [DONE]\n\n"
                 
-                # 5. Save conversation to memory in background (auto classify type)
+                # 5. Save conversation to memory in background
                 if len(request.messages) >= 1:
                     conversation = [msg.model_dump() for msg in request.messages[-2:]]
                     conversation.append({"role": "assistant", "content": full_response})
                     try:
-                        # memory_type=None enables auto classification
                         result = mm.add_conversation(
                             messages=conversation,
-                            user_id=request.user_id,
-                            memory_type=None,  # Auto classify
-                            auto_classify=True
+                            user_id=request.user_id
                         )
-                        if result.get("classified_type"):
-                            print(f"✓ Memory saved as: {result['classified_type']}")
+                        print(f"✓ Memory saved")
                     except Exception as e:
                         print(f"Failed to save memory: {e}")
             
@@ -144,26 +140,21 @@ Please provide personalized, memory-aware answers based on the above information
             
             assistant_message = response.choices[0].message.content
             
-            # Save conversation to memory (auto classify type)
-            classified_type = None
+            # Save conversation to memory
             if len(request.messages) >= 1:
                 conversation = [msg.model_dump() for msg in request.messages[-2:]]
                 conversation.append({"role": "assistant", "content": assistant_message})
                 try:
-                    result = mm.add_conversation(
+                    mm.add_conversation(
                         messages=conversation,
-                        user_id=request.user_id,
-                        memory_type=None,  # Auto classify
-                        auto_classify=True
+                        user_id=request.user_id
                     )
-                    classified_type = result.get("classified_type")
                 except Exception as e:
                     print(f"Failed to save memory: {e}")
             
             return {
                 "message": assistant_message,
-                "memory_context": context,
-                "memory_type": classified_type
+                "memory_context": context
             }
     
     except Exception as e:

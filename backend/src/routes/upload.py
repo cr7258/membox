@@ -36,8 +36,7 @@ def generate_filename(original_filename: str) -> str:
 async def upload_image(
     file: UploadFile = File(...),
     user_id: str = Form(...),
-    description: str = Form(""),
-    memory_type: str = Form("episodic")
+    description: str = Form("")
 ):
     """
     Upload image and add to memory
@@ -46,7 +45,6 @@ async def upload_image(
         file: Image file
         user_id: User ID
         description: Image description (optional)
-        memory_type: Memory type, defaults to episodic
     
     Returns:
         Upload result and memory ID
@@ -78,7 +76,6 @@ async def upload_image(
         result = mm.add_memory(
             content=description or "User uploaded image",
             user_id=user_id,
-            memory_type=memory_type,
             image_url=image_url
         )
         
@@ -99,8 +96,7 @@ async def upload_image(
 async def add_image_from_url(
     image_url: str = Form(...),
     user_id: str = Form(...),
-    description: str = Form(""),
-    memory_type: str = Form("episodic")
+    description: str = Form("")
 ):
     """
     Add image memory from URL (without downloading)
@@ -109,7 +105,6 @@ async def add_image_from_url(
         image_url: Image URL
         user_id: User ID
         description: Image description (optional)
-        memory_type: Memory type
     
     Returns:
         Add result
@@ -119,7 +114,6 @@ async def add_image_from_url(
         result = mm.add_memory(
             content=description or "User shared image",
             user_id=user_id,
-            memory_type=memory_type,
             image_url=image_url
         )
         

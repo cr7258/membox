@@ -83,55 +83,43 @@ ${memoryContext ? `Here is background information related to the current convers
 Please provide personalized, memory-aware answers based on the above information. Be natural and friendly.`;
 
   // 3. Stream response
+  const backendUrl = process.env.BACKEND_URL ?? 'http://localhost:8000';
+  
   const result = streamText({
     model: qwen.chatModel('qwen-plus'),
     system: systemPrompt,
     messages: await convertToModelMessages(messages),
     abortSignal: req.signal,
-  });
-
-  // 4. Save PREVIOUS complete conversation to memory in background
-  // PowerMem needs both user message AND assistant response to extract memories
-  // So we save the previous round (user + assistant) when a new message comes in
-  const backendUrl = process.env.BACKEND_URL ?? 'http://localhost:8000';
-  
-  // Find the last complete conversation pair (user message + assistant response)
-  // messages array: [..., user, assistant, user(current)]
-  // We want to save: [user, assistant] from the previous round
-  if (messages.length >= 3) {
-    // Get the previous user message and its assistant response
-    const prevUserIdx = messages.length - 3;
-    const prevAssistantIdx = messages.length - 2;
-    const prevUser = messages[prevUserIdx];
-    const prevAssistant = messages[prevAssistantIdx];
-    
-    if (prevUser?.role === 'user' && prevAssistant?.role === 'assistant') {
+    // 4. Save current conversation to memory after response completes
+    async onFinish({ text }) {
       const conversationToSave = [
         {
           role: 'user',
-          content: prevUser.parts?.find((p) => p.type === 'text')?.text ?? '',
+          content: lastMessageText,
         },
         {
-          role: 'assistant', 
-          content: prevAssistant.parts?.find((p) => p.type === 'text')?.text ?? '',
+          role: 'assistant',
+          content: text,
         },
       ];
       
-      console.log("💾 [API] Saving previous conversation:", conversationToSave);
+      console.log("💾 [API] Saving conversation:", conversationToSave);
       
-      fetch(`${backendUrl}/api/memory/add-conversation`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: conversationToSave,
-          user_id: effectiveUserId,
-          // memory_type is omitted to enable auto-classification by LLM
-        }),
-      }).catch(console.error);
-    }
-  } else {
-    console.log(`💾 [API] Skipping save - messages.length=${messages.length}, need >= 3`);
-  }
+      try {
+        await fetch(`${backendUrl}/api/memory/add-conversation`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: conversationToSave,
+            user_id: effectiveUserId,
+          }),
+        });
+        console.log("✅ [API] Conversation saved to memory");
+      } catch (error) {
+        console.error("❌ [API] Failed to save conversation:", error);
+      }
+    },
+  });
 
   return result.toUIMessageStreamResponse({
     consumeSseStream: consumeStream,

@@ -14,7 +14,6 @@ class AddMemoryRequest(BaseModel):
     """Add memory request"""
     content: str
     user_id: str
-    memory_type: Optional[str] = None  # None = auto classify (semantic/episodic/procedural/working)
     image_url: Optional[str] = None
 
 
@@ -22,15 +21,12 @@ class AddConversationRequest(BaseModel):
     """Add conversation request"""
     messages: List[Dict[str, str]]
     user_id: str
-    memory_type: Optional[str] = None  # None = auto classify
-    auto_classify: bool = True  # Enable auto classification
 
 
 class SearchMemoryRequest(BaseModel):
     """Search memory request"""
     query: str
     user_id: str
-    memory_type: Optional[str] = None
     limit: int = 5
     use_retention: bool = False  # Whether to consider forgetting curve
 
@@ -49,7 +45,6 @@ async def add_memory(request: AddMemoryRequest):
         result = mm.add_memory(
             content=request.content,
             user_id=request.user_id,
-            memory_type=request.memory_type,
             image_url=request.image_url
         )
         return {"success": True, "result": result}
@@ -59,20 +54,16 @@ async def add_memory(request: AddMemoryRequest):
 
 @router.post("/add-conversation")
 async def add_conversation(request: AddConversationRequest):
-    """Extract memory from conversation with auto classification"""
+    """Extract memory from conversation"""
     try:
         print(f"\n💾 [AddConv] ========== Add Conversation ==========")
         print(f"💾 [AddConv] user_id: {request.user_id}")
-        print(f"💾 [AddConv] memory_type: {request.memory_type}")
-        print(f"💾 [AddConv] auto_classify: {request.auto_classify}")
         print(f"💾 [AddConv] messages: {request.messages}")
         
         mm = get_memory_manager()
         result = mm.add_conversation(
             messages=request.messages,
-            user_id=request.user_id,
-            memory_type=request.memory_type,
-            auto_classify=request.auto_classify
+            user_id=request.user_id
         )
         print(f"💾 [AddConv] Result: {result}")
         print(f"💾 [AddConv] =====================================\n")
@@ -89,7 +80,6 @@ async def search_memory(request: SearchMemoryRequest):
         print(f"\n🔍 [Search] ========== Memory Search ==========")
         print(f"🔍 [Search] user_id: {request.user_id}")
         print(f"🔍 [Search] query: {request.query}")
-        print(f"🔍 [Search] memory_type: {request.memory_type}")
         print(f"🔍 [Search] limit: {request.limit}")
         
         mm = get_memory_manager()
@@ -99,7 +89,6 @@ async def search_memory(request: SearchMemoryRequest):
             results = mm.search_with_retention(
                 query=request.query,
                 user_id=request.user_id,
-                memory_type=request.memory_type,
                 limit=request.limit
             )
             print(f"🔍 [Search] Results (with retention): {len(results)} found")
@@ -111,7 +100,6 @@ async def search_memory(request: SearchMemoryRequest):
             results = mm.search_memory(
                 query=request.query,
                 user_id=request.user_id,
-                memory_type=request.memory_type,
                 limit=request.limit
             )
             print(f"🔍 [Search] Results: {results.get('results', [])}")
