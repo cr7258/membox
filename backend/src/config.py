@@ -42,6 +42,4 @@ config = {
             "db_name": os.getenv("OCEANBASE_DATABASE", "membox"),
         }
     },
-    
-    "version": "v1.2",
 }
