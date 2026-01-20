@@ -47,7 +47,7 @@ import { cn } from "@/lib/utils";
 
 const SUGGESTIONS = [
   "My name is John, I work in NYC",
-  "Remember I like coffee ☕",
+  "Remember I like coffee",
   "My birthday is January 15th",
   "I'm learning TypeScript",
 ];
@@ -336,7 +336,7 @@ export default function Home() {
 
             {/* Right side - User indicator on mobile */}
             <div className="md:hidden text-sm text-muted-foreground">
-              👤 {currentUser.name}
+              {currentUser.name}
             </div>
           </div>
         </header>

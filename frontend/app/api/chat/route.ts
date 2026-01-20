@@ -79,12 +79,12 @@ export async function POST(req: Request) {
 
       // User profile
       if (searchData.profile_content) {
-        memoryContext += `\n👤 User Profile: ${searchData.profile_content}`;
+        memoryContext += `\nUser Profile: ${searchData.profile_content}`;
       }
 
       // Related memories
       if (searchData.results?.length > 0) {
-        memoryContext += '\n\n🧠 Related Memories:';
+        memoryContext += '\n\nRelated Memories:';
         for (const mem of searchData.results) {
           memoryContext += `\n- ${mem.memory}`;
         }

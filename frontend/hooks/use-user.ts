@@ -78,7 +78,7 @@ export function useUser() {
           name: normalizedName,
           createdAt: new Date(),
         };
-        console.log("✨ [useUser] Created new user:", user);
+        console.log("[useUser] Created new user:", user);
         const newUsers = [...users, user];
         saveUsers(newUsers);
       }
