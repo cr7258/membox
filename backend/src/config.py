@@ -15,7 +15,6 @@ config = {
         "config": {
             "model": os.getenv("LLM_MODEL", "qwen-plus"),
             "api_key": os.getenv("DASHSCOPE_API_KEY"),
-            "enable_vision": True,  # Enable Vision capability
         }
     },
     
