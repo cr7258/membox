@@ -58,9 +58,6 @@ export default function Home() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [pendingImages, setPendingImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [messageImages, setMessageImages] = useState<Record<string, string[]>>({});
-  const [imagesToAssociate, setImagesToAssociate] = useState<string[]>([]);
-  const [lastProcessedUserMessageId, setLastProcessedUserMessageId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // User management
@@ -115,31 +112,6 @@ export default function Home() {
     }
   }, [isSessionsLoaded, currentUser, sessions.length, createSession]);
 
-  // Associate images with the latest user message after it's sent
-  // Using state instead of ref to avoid stale closure issues
-  useEffect(() => {
-    // Only run if we have pending images to associate
-    if (imagesToAssociate.length === 0) return;
-    
-    // Find the most recent user message
-    const userMessages = messages.filter(m => m.role === 'user');
-    if (userMessages.length === 0) return;
-    
-    const lastUserMessage = userMessages[userMessages.length - 1];
-    
-    // Check if we already processed this message
-    if (lastUserMessage.id === lastProcessedUserMessageId) return;
-    
-    // Associate images with this message
-    setMessageImages(prev => ({
-      ...prev,
-      [lastUserMessage.id]: [...imagesToAssociate]
-    }));
-    
-    setLastProcessedUserMessageId(lastUserMessage.id);
-    setImagesToAssociate([]);
-  }, [messages, imagesToAssociate, lastProcessedUserMessageId]);
-
   // Handle image upload
   const handleImageUpload = useCallback(
     async (files: FileList | null) => {
@@ -192,23 +164,31 @@ export default function Home() {
 
       // Store userId in cookie for API route to read
       document.cookie = `membox_user_id=${userId}; path=/; max-age=86400`;
+
+      // Build message parts with images
+      const parts: Array<{ type: 'text'; text: string } | { type: 'file'; mediaType: string; url: string }> = [];
       
-      // Store image URLs in cookie for API route to read
-      // Use state to track images for association (avoids stale closure)
-      if (pendingImages.length > 0) {
-        document.cookie = `membox_images=${encodeURIComponent(JSON.stringify(pendingImages))}; path=/; max-age=60`;
-        setImagesToAssociate([...pendingImages]);
-      } else {
-        document.cookie = `membox_images=; path=/; max-age=0`;
+      // Add images first
+      for (const url of pendingImages) {
+        parts.push({
+          type: 'file' as const,
+          mediaType: 'image/png',
+          url: url,
+        });
       }
+      
+      // Add text
+      parts.push({
+        type: 'text' as const,
+        text: message.text || 'Please describe these images',
+      });
 
       // Clear UI state before sending
       setInput("");
       setPendingImages([]);
 
-      await sendMessage({
-        text: message.text || "Please describe these images",
-      });
+      // Send message with parts (standard Vercel AI SDK way)
+      await sendMessage({ parts });
     },
     [sendMessage, currentSessionId, createSession, userId, pendingImages]
   );
@@ -387,39 +367,43 @@ export default function Home() {
                 ) : (
                   <>
                     {messages.map((message) => {
-                      const images = messageImages[message.id];
+                      // Get images from message parts (standard way)
+                      const imageParts = message.parts?.filter(
+                        (part) => part.type === 'file'
+                      ) || [];
+                      
                       return (
-                      <Message key={message.id} from={message.role}>
-                        {/* Show images for user messages */}
-                        {message.role === "user" && images && images.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mb-2">
-                            {images.map((url, idx) => (
-                              <img
-                                key={idx}
-                                src={url}
-                                alt={`Image ${idx + 1}`}
-                                className="max-w-[200px] max-h-[200px] object-cover rounded-lg border border-border"
-                              />
+                        <Message key={message.id} from={message.role}>
+                          {/* Show images for user messages */}
+                          {message.role === "user" && imageParts.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mb-2">
+                              {imageParts.map((part, idx) => (
+                                <img
+                                  key={idx}
+                                  src={(part as { type: 'file'; url: string }).url}
+                                  alt={`Image ${idx + 1}`}
+                                  className="max-w-[200px] max-h-[200px] object-cover rounded-lg border border-border"
+                                />
+                              ))}
+                            </div>
+                          )}
+                          {message.parts
+                            ?.filter((part) => part.type === "text")
+                            ?.map((part, index) => (
+                              <MessageContent
+                                key={`${message.id}-${part.type}-${index}`}
+                              >
+                                {message.role === "assistant" ? (
+                                  <MessageResponse>{(part as { type: 'text'; text: string }).text}</MessageResponse>
+                                ) : (
+                                  <span className="whitespace-pre-wrap">
+                                    {(part as { type: 'text'; text: string }).text}
+                                  </span>
+                                )}
+                              </MessageContent>
                             ))}
-                          </div>
-                        )}
-                        {message.parts
-                          ?.filter((part) => part.type === "text")
-                          ?.map((part, index) => (
-                            <MessageContent
-                              key={`${message.id}-${part.type}-${index}`}
-                            >
-                              {message.role === "assistant" ? (
-                                <MessageResponse>{part.text}</MessageResponse>
-                              ) : (
-                                <span className="whitespace-pre-wrap">
-                                  {part.text}
-                                </span>
-                              )}
-                            </MessageContent>
-                          ))}
-                      </Message>
-                    );
+                        </Message>
+                      );
                     })}
 
                     {status === "submitted" && (
