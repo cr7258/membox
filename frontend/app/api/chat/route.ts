@@ -34,7 +34,7 @@ export async function POST(req: Request) {
   );
 
   // 1. Search related memories (call backend API)
-  const backendUrl = process.env.BACKEND_URL ?? 'http://localhost:8000';
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:8000';
   let memoryContext = '';
   try {
     const searchRes = await fetch(`${backendUrl}/api/memory/search`, {
